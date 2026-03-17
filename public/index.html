@@ -612,7 +612,11 @@ let currentLoad = 0; // cancela carregamentos antigos
 
 async function getStreamUrl(videoId) {
   try {
-    const r = await fetch(`/api/stream?id=${videoId}`);
+    // Timeout de 35 segundos (yt-dlp pode demorar)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 35000);
+    const r = await fetch(`/api/stream?id=${videoId}`, { signal: ctrl.signal });
+    clearTimeout(timer);
     if (!r.ok) return null;
     const d = await r.json();
     return d.url || null;
@@ -679,13 +683,14 @@ async function playItem(idx) {
 
   const url = await getStreamUrl(item.id);
 
-  // Se veio uma carga mais nova, ignora essa
   if (loadId !== currentLoad) return;
 
   if (!url) {
-    toast('⚠️ Não foi possível carregar — pulando...');
+    toast('⚠️ Não foi possível carregar este vídeo');
     updIcons();
-    setTimeout(nxt, 1200);
+    // Não pula automaticamente — deixa o usuário decidir
+    document.getElementById('mbtn').textContent = '▶';
+    document.getElementById('fpbtn').textContent = '▶';
     return;
   }
 
